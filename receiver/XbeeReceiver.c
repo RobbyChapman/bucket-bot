@@ -3,7 +3,7 @@
 #include <linux/ioctl.h>
 #include <fcntl.h>
 #include <termios.h>
-#include "N64_DTO.h"
+#include "XbeeReceiver.h"
 
 /* Local */
 int fileDescriptor = -1;
@@ -69,12 +69,4 @@ void setTermConfig(int fd, const int baud) {
 int openUART(const char *port) {
 
     return open(port, O_RDWR | O_NOCTTY);
-}
-
-int main(int argc, char *argv[]) {
-
-    char *t = "/dev/ttyTHS1";
-    init(t, B115200);
-
-    return 0;
 }

@@ -2,6 +2,9 @@
 * Created by robert.chapman on 4/21/16.
 */
 
+#ifndef N64_DTO_H
+#define N64_DTO_H
+
 #include <stdbool.h>
 
 struct N64_DTO {
@@ -22,3 +25,5 @@ struct N64_DTO {
     bool leftBumper;
     bool rightBumper;
 };
+
+#endif
