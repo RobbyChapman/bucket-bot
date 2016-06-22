@@ -5,17 +5,27 @@
 #include <termios.h>
 #include "N64_DTO.h"
 
-const char *UART_PORT = "/dev/ttyTHS1";
-const int BAUD = B115200;
+const char *DEFAULT_PORT = "/dev/ttyTHS1";
+const int DEFAULT_BAUD = B115200;
 
-int main(int argc, char *argv[]) {
+int fileDescriptor = -1;
 
-    int fd = open(UART_PORT, O_RDWR | O_NOCTTY);
+void init(char *port, int baud) {
+
+    fileDescriptor = openUART(port ? port : DEFAULT_PORT);
+    setTermConfig(fileDescriptor, baud ? baud : DEFAULT_BAUD);
+}
+
+struct N64_DTO queryController(const int fd) {
+
+}
+
+void setTermConfig(int fd, int baud) {
+
     struct termios toptions;
-    struct N64_DTO controller;
 
     tcgetattr(fd, &toptions);
-    cfsetspeed(&toptions, BAUD);
+    cfsetspeed(&toptions, baud);
 
     /* man termios for individual definitions */
     toptions.c_cflag &= ~PARENB;
@@ -32,6 +42,17 @@ int main(int argc, char *argv[]) {
 
     tcsetattr(fd, TCSANOW, &toptions);
     tcflush(fd, TCIFLUSH);
+}
+
+int openUART(char *port) {
+
+    return open(port, O_RDWR | O_NOCTTY);
+}
+
+int main(int argc, char *argv[]) {
+
+   // int fd = open(UART_PORT, O_RDWR | O_NOCTTY);
+    struct N64_DTO controller;
 
     while (true) {
         int n = read(fd, (char *) &controller, sizeof(struct N64_DTO));
