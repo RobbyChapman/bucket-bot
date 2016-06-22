@@ -5,19 +5,39 @@
 #include <termios.h>
 #include "N64_DTO.h"
 
-const char *DEFAULT_PORT = "/dev/ttyTHS1";
-const int DEFAULT_BAUD = B115200;
+char *DEFAULT_PORT = "/dev/ttyTHS1";
+int DEFAULT_BAUD = B115200;
 
 int fileDescriptor = -1;
 
+struct N64_DTO queryController(int fd);
+void init(char *port, int baud);
+void setTermConfig(int fd, int baud);
+int openUART(char *port);
+
 void init(char *port, int baud) {
 
-    fileDescriptor = openUART(port ? port : DEFAULT_PORT);
-    setTermConfig(fileDescriptor, baud ? baud : DEFAULT_BAUD);
+    fileDescriptor = openUART(DEFAULT_PORT);
+    setTermConfig(fileDescriptor, DEFAULT_BAUD);
+
+    while (true) {
+        queryController(fileDescriptor);
+       // printf("Y Joystick:: %i \n", (signed char) controller.y);
+       // printf("X Joystick:: %i \n", (signed char) controller.x);
+    }
 }
 
-struct N64_DTO queryController(const int fd) {
+struct N64_DTO queryController(int fd) {
 
+    struct N64_DTO controller;
+    int byteCount = read(fd, (char *) &controller, sizeof(struct N64_DTO));
+
+    if (byteCount == -1) {
+        printf("We have an error!");
+    } else {
+        printf("%i btyes recieved...\n", byteCount);
+    }
+    return controller;
 }
 
 void setTermConfig(int fd, int baud) {
@@ -51,15 +71,8 @@ int openUART(char *port) {
 
 int main(int argc, char *argv[]) {
 
-   // int fd = open(UART_PORT, O_RDWR | O_NOCTTY);
-    struct N64_DTO controller;
+    char *t = "/dev/ttyTHS1";
+    init(t, B115200);
 
-    while (true) {
-        int n = read(fd, (char *) &controller, sizeof(struct N64_DTO));
-
-        printf("%i btyes recieved...\n", n);
-        printf("Y Joystick:: %i \n", (signed char) controller.y);
-        printf("X Joystick:: %i \n", (signed char) controller.x);
-    }
     return 0;
 }
