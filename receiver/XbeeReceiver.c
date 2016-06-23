@@ -5,25 +5,27 @@
 #include <termios.h>
 #include "N64_DTO.h"
 
-char *DEFAULT_PORT = "/dev/ttyTHS1";
-int DEFAULT_BAUD = B115200;
-
+/* Local */
 int fileDescriptor = -1;
 
+/* Constants */
+const char *DEFAULT_PORT = "/dev/ttyTHS1";
+const int DEFAULT_BAUD = B115200;
+
+/* Prototypes */
 struct N64_DTO queryController(int fd);
-void init(char *port, int baud);
-void setTermConfig(int fd, int baud);
-int openUART(char *port);
+void init(const char *port, const int baud);
+void setTermConfig(int fd, const int baud);
+int openUART(const char *port);
 
-void init(char *port, int baud) {
+void init(const char *port, const int baud) {
 
-    fileDescriptor = openUART(DEFAULT_PORT);
-    setTermConfig(fileDescriptor, DEFAULT_BAUD);
-
+    fileDescriptor = openUART(port ? port : DEFAULT_PORT);
+    setTermConfig(fileDescriptor, baud ? baud : DEFAULT_BAUD);
     while (true) {
-        queryController(fileDescriptor);
-       // printf("Y Joystick:: %i \n", (signed char) controller.y);
-       // printf("X Joystick:: %i \n", (signed char) controller.x);
+        struct N64_DTO controller = queryController(fileDescriptor);
+        printf("Y Joystick:: %i \n", (signed char) controller.y);
+        printf("X Joystick:: %i \n", (signed char) controller.x);
     }
 }
 
@@ -40,7 +42,7 @@ struct N64_DTO queryController(int fd) {
     return controller;
 }
 
-void setTermConfig(int fd, int baud) {
+void setTermConfig(int fd, const int baud) {
 
     struct termios toptions;
 
@@ -64,7 +66,7 @@ void setTermConfig(int fd, int baud) {
     tcflush(fd, TCIFLUSH);
 }
 
-int openUART(char *port) {
+int openUART(const char *port) {
 
     return open(port, O_RDWR | O_NOCTTY);
 }
