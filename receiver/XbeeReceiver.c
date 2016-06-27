@@ -7,24 +7,16 @@
 #include <linux/ioctl.h>
 #include <fcntl.h>
 #include <termios.h>
-#include <sys/signal.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <pthread.h>
 #include "XbeeReceiver.h"
 
-#define FALSE 0
-#define TRUE 1
-
-volatile int STOP = FALSE;
-
-void signal_handler_IO(int status);
-
-int wait_flag = TRUE;
+struct termios originalConfig;
 int fileDescriptor = -1;
 
+/* Types */
 typedef void (*RxHandlerFn)(struct N64_DTO controller);
-
 typedef struct RXConfig {
     int fileDescriptor;
     RxHandlerFn handlerFn;
@@ -32,14 +24,46 @@ typedef struct RXConfig {
 
 /* Constants */
 const char *DEFAULT_PORT = "/dev/ttyTHS1";
-const int DEFAULT_BAUD = B115200;
+const speed_t DEFAULT_BAUD = B115200;
 
 /* Prototypes */
 struct N64_DTO queryController(void *x_void_ptr);
-void initWithRxHandler(const char *port, const int baud, void (*rxCallback)(struct N64_DTO));
-void setTermConfig(int fd, const int baud);
-void signal_handler_IO(int status);
+void initWithRxHandler(const char *port, const speed_t baud, void (*rxCallback)(struct N64_DTO));
+void setTermConfig(int fd, const speed_t baud);
 int openUART(const char *port);
+void setOriginalTermConfig(int fd, struct termios config);
+void restoreOriginalTermConfig(int fd, struct termios config);
+void setFileDescriptor(const char *port);
+void *pollRxThreadFn(void *x_void_ptr);
+
+void initWithRxHandler(const char *port, const speed_t baud, void (*rxCallback)(struct N64_DTO)) {
+
+    setFileDescriptor(port);
+    setOriginalTermConfig(fileDescriptor, originalConfig);
+    setTermConfig(fileDescriptor, baud ? baud : DEFAULT_BAUD);
+    
+    RXConfig rxConfig;
+    rxConfig.handlerFn = rxCallback;
+    rxConfig.fileDescriptor = fileDescriptor;
+
+    pthread_t readXbeeThread;
+    if (pthread_create(&readXbeeThread, NULL, pollRxThreadFn, &rxConfig)) {
+        fprintf(stderr, "Error creating thread\n");
+        exit(1);
+    }
+
+    /* There's actually no point in this while loop. It is here because I haven't written the logic to stop/start the
+      program */
+    while (true) {
+        usleep(2000);
+    }
+    restoreOriginalTermConfig(fileDescriptor, originalConfig);
+}
+
+int openUART(const char *port) {
+
+    return open(port, O_RDWR | O_NOCTTY);
+}
 
 void *pollRxThreadFn(void *x_void_ptr) {
 
@@ -66,47 +90,26 @@ struct N64_DTO queryController(void *x_void_ptr) {
     return controller;
 }
 
-void initWithRxHandler(const char *port, const int baud, void (*rxCallback)(struct N64_DTO)) {
+void setOriginalTermConfig(int fd, struct termios config) {
+
+    tcgetattr(fd, &config);
+}
+
+void restoreOriginalTermConfig(int fd, struct termios config) {
+
+    tcsetattr(fd, TCSANOW, &config);
+}
+
+void setFileDescriptor(const char *port) {
 
     fileDescriptor = openUART(port ? port : DEFAULT_PORT);
-    setTermConfig(fileDescriptor, baud ? baud : DEFAULT_BAUD);
-    pthread_t readXbeeThread;
-
-    RXConfig rxConfig;
-    rxConfig.handlerFn = rxCallback;
-    rxConfig.fileDescriptor = fileDescriptor;
-
-    if (pthread_create(&readXbeeThread, NULL, pollRxThreadFn, &rxConfig)) {
-        fprintf(stderr, "Error creating thread\n");
-        exit(1);
-    }
-
-    /* There's actually no point in this while loop. It is here because I havent written the logic to stop/start the
-      program */
-    while (STOP == FALSE) {
-        usleep(2000);
-    }
 }
 
-void signal_handler_IO(int status) {
-    printf("received SIGIO signal.\n");
-    wait_flag = FALSE;
-}
+void setTermConfig(int fd, const speed_t baud) {
 
-void setTermConfig(int fd, const int baud) {
+    struct termios toptions, oldOptions;
 
-    struct sigaction saio;
-    saio.sa_handler = signal_handler_IO;
-    sigemptyset(&saio.sa_mask);
-    sigaddset(&saio.sa_mask, SIGINT);
-    saio.sa_flags = 0;
-    saio.sa_restorer = NULL;
-    sigaction(SIGIO, &saio, NULL);
-    fcntl(fd, F_SETOWN, getpid());
-    fcntl(fd, F_SETFL, FASYNC);
-
-    struct termios toptions;
-
+    tcgetattr(fd, &oldOptions);
     tcgetattr(fd, &toptions);
     cfsetspeed(&toptions, baud);
 
@@ -125,9 +128,4 @@ void setTermConfig(int fd, const int baud) {
 
     tcsetattr(fd, TCSANOW, &toptions);
     tcflush(fd, TCIFLUSH);
-}
-
-int openUART(const char *port) {
-
-    return open(port, O_RDWR | O_NOCTTY | O_NONBLOCK);
 }
