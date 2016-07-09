@@ -1,5 +1,8 @@
 /**
  * Created by Robby Chapman on 06/22/16.
+ *
+ * gcc receiver.c ../receiver/XbeeReceiver.c -pthread -o receiver
+ *
  */
 
 #include "../receiver/XbeeReceiver.h"
@@ -9,8 +12,8 @@ void rxHandler(struct N64_DTO controller);
 
 int main(int argc, char *argv[]) {
 
-    char *t = "/dev/ttyTHS1";
-    initWithRxHandler(t, 115200, rxHandler);
+    char *port = "/dev/ttyTHS1";
+    initWithRxHandler(port, 115200, rxHandler);
 
     return 0;
 }
