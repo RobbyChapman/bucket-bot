@@ -11,6 +11,8 @@
 #include <unistd.h>
 #include <pthread.h>
 #include "XbeeReceiver.h"
+#include <errno.h>
+#include <string.h>
 
 struct termios originalConfig;
 int fileDescriptor = -1;
@@ -28,21 +30,22 @@ const speed_t DEFAULT_BAUD = B115200;
 
 /* Prototypes */
 struct N64_DTO queryController(void *x_void_ptr);
-void initWithRxHandler(const char *port, const speed_t baud, void (*rxCallback)(struct N64_DTO));
+int initWithRxHandler(const char *port, const speed_t baud, void (*rxCallback)(struct N64_DTO));
 void setTermConfig(int fd, const speed_t baud);
 int openUART(const char *port);
 void setOriginalTermConfig(int fd, struct termios config);
-void restoreOriginalTermConfig(int fd, struct termios config);
 void setFileDescriptor(const char *port);
 void *pollRxThreadFn(void *x_void_ptr);
 
-void initWithRxHandler(const char *port, const speed_t baud, void (*rxCallback)(struct N64_DTO)) {
+int initWithRxHandler(const char *port, const speed_t baud, void (*rxCallback)(struct N64_DTO)) {
 
     setFileDescriptor(port);
     setOriginalTermConfig(fileDescriptor, originalConfig);
     setTermConfig(fileDescriptor, baud ? baud : DEFAULT_BAUD);
-    
-    RXConfig rxConfig;
+
+    static RXConfig rxConfig;
+    memset(&rxConfig, 0, sizeof(rxConfig));
+
     rxConfig.handlerFn = rxCallback;
     rxConfig.fileDescriptor = fileDescriptor;
 
@@ -52,12 +55,7 @@ void initWithRxHandler(const char *port, const speed_t baud, void (*rxCallback)(
         exit(1);
     }
 
-    /* There's actually no point in this while loop. It is here because I haven't written the logic to stop/start the
-      program */
-    while (true) {
-        usleep(2000);
-    }
-    restoreOriginalTermConfig(fileDescriptor, originalConfig);
+    return fileDescriptor;
 }
 
 int openUART(const char *port) {
@@ -81,7 +79,7 @@ struct N64_DTO queryController(void *x_void_ptr) {
     ssize_t byteCount = read(x_ptr->fileDescriptor, (char *) &controller, sizeof(struct N64_DTO));
 
     if (byteCount == -1) {
-        printf("I'll handle this error later on");
+        printf("Error on read() %s \n", strerror(errno));
         exit(1);
     }
 
@@ -93,11 +91,6 @@ struct N64_DTO queryController(void *x_void_ptr) {
 void setOriginalTermConfig(int fd, struct termios config) {
 
     tcgetattr(fd, &config);
-}
-
-void restoreOriginalTermConfig(int fd, struct termios config) {
-
-    tcsetattr(fd, TCSANOW, &config);
 }
 
 void setFileDescriptor(const char *port) {

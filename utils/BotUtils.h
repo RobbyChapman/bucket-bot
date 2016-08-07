@@ -1,3 +1,7 @@
+/**
+ * Created by Robby Chapman on 07/09/16.
+ */
+
 #ifndef BOT_UTILS_H
 #define BOT_UTILS_H
 
@@ -18,7 +22,9 @@ typedef struct {
     int maxMotorCtrlInput;
 } NormalizedMotorConfig;
 
-int normalizeMotorSpeed(int speed, NormalizedMotorConfig config);
+double normalizeMotorSpeed(int speed, NormalizedMotorConfig config);
 BiMotorPositions transformedMotorPositions(Joystick joystick);
+void adjustVariance(Joystick *joystick);
+BiMotorPositions transformedMotorPositionsV2(Joystick joystick);
 
 #endif

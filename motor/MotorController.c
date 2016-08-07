@@ -4,6 +4,8 @@
 #include <termios.h>
 #include <stdlib.h>
 #include "MotorController.h"
+#include <errno.h>
+#include <string.h>
 
 #define SERIAL_ERROR -9999
 
@@ -12,20 +14,21 @@ static const unsigned char FORWARD = 0x05;
 static const unsigned char REVERSE = 0x06;
 static const unsigned char SAFE_START = 0x03;
 
-void setTermConfig(int fd);
-int openUART(const char *port);
-int writeBytes(int fd, unsigned char *command);
+void setMotorTermConfig(int fd);
 
-int openUART(const char *port) {
+int openMotorUart(const char *port);
+
+int openMotorUart(const char *port) {
 
     int fd = open(port, O_RDWR | O_NOCTTY);
     if (fd == -1) {
+        printf("\n Error4!");
         exit(1);
     }
     return fd;
 }
 
-void setTermConfig(int fd) {
+void setMotorTermConfig(int fd) {
 
     struct termios options;
 
@@ -36,19 +39,10 @@ void setTermConfig(int fd) {
     tcsetattr(fd, TCSANOW, &options);
 }
 
-int writeBytes(int fd, unsigned char *command) {
-
-    if (write(fd, command, sizeof(command)) == -1) {
-        perror("error writing");
-        return SERIAL_ERROR;
-    }
-    return 0;
-}
-
 int initMotorController(const char *port) {
 
-    int fileDescriptor = openUART(port);
-    setTermConfig(fileDescriptor);
+    int fileDescriptor = openMotorUart(port);
+    setMotorTermConfig(fileDescriptor);
 
     return fileDescriptor;
 }
@@ -56,18 +50,31 @@ int initMotorController(const char *port) {
 int setExitSafeStart(int fd, unsigned char id) {
 
     unsigned char bytes[3] = {PROTOCOL_ID, id, SAFE_START};
-    return writeBytes(fd, bytes);
-}
-
-int setMotorSpeedWithId(int fd, int speed, unsigned char id) {
-
-    unsigned char bytes[5] = {PROTOCOL_ID, id, FORWARD, (unsigned char) (speed & 0x1F), (unsigned char) (speed >> 5 & 0x7F)};
 
     if (write(fd, bytes, sizeof(bytes)) == -1) {
-        perror("error writing");
+        printf("\n Error !");
         return SERIAL_ERROR;
     }
     return 0;
 }
 
+int setMotorSpeedWithId(int fd, int speed, unsigned char id) {
 
+    unsigned char bytes[5] = {PROTOCOL_ID, id, FORWARD, 0, 0};
+
+    if (speed < 0) {
+        bytes[2] = REVERSE;
+        speed = -speed;
+    } else {
+        bytes[2] = FORWARD;
+    }
+
+    bytes[3] = (unsigned char) (speed & 0x1F);
+    bytes[4] = (unsigned char) (speed >> 5 & 0x7F);
+
+    if (write(fd, bytes, sizeof(bytes)) == -1) {
+        printf("Error on write() %s \n", strerror(errno));
+        return SERIAL_ERROR;
+    }
+    return 0;
+}

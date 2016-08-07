@@ -9,7 +9,7 @@
 #define XBEE_RECEIVER_H
 
 struct N64_DTO queryController(void *x_void_ptr);
-void initWithRxHandler(const char *port, const speed_t baud, void (*rxCallback)(struct N64_DTO));
+int initWithRxHandler(const char *port, const speed_t baud, void (*rxCallback)(struct N64_DTO));
 
 #endif
 

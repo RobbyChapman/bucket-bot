@@ -10,7 +10,7 @@
 
 int main(int argc, char *argv[]) {
 
-    int normalizeMotorSpeed(int speed, NormalizedMotorConfig config);
+    double normalizeMotorSpeed(int speed, NormalizedMotorConfig config);
 
     NormalizedMotorConfig config;
 
@@ -22,8 +22,16 @@ int main(int argc, char *argv[]) {
     int i = config.minCtrlOutput;
 
     for (; i <= config.maxCtrlOutput; i++) {
-        printf("Normalized speed is: %i \n", normalizeMotorSpeed(i, config));
+        printf("Normalized speed is: %d \n", (int) normalizeMotorSpeed(i, config));
     }
+
+    Joystick joystick;
+    joystick.x = (int) normalizeMotorSpeed(67, config);
+    joystick.y = (int) normalizeMotorSpeed(-72, config);
+
+    printf("Original motor speeds are left: %d right: %i \n", joystick.x, joystick.y);
+    BiMotorPositions positions = transformedMotorPositions(joystick);
+    printf("Motor positions are left: %d right: %i \n", positions.left, positions.right);
 
     return 0;
 }

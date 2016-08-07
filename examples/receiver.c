@@ -13,8 +13,16 @@ void rxHandler(struct N64_DTO controller);
 int main(int argc, char *argv[]) {
 
     char *port = "/dev/ttyTHS1";
-    initWithRxHandler(port, 115200, rxHandler);
+    int fileDescriptor = initWithRxHandler(port, 115200, rxHandler);
 
+    while (true) {
+        char input = (char) getchar();
+        if (input == 'q') {
+            printf("\n Quiting application \n\n");
+            close(fileDescriptor);
+            break;
+        }
+    }
     return 0;
 }
 

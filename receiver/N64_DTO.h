@@ -10,8 +10,8 @@
 struct N64_DTO {
     bool a;
     bool b;
-    char x;
-    char y;
+    signed char x;
+    signed char y;
     bool z;
     bool start;
     bool cUp;
